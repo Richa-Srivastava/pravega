@@ -21,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static io.pravega.test.system.framework.TestFrameworkException.Type.RequestFailed;
+import io.pravega.test.system.framework.Utils;
 
 @Slf4j
 public class PravegaControllerK8sService extends AbstractService {
@@ -76,12 +77,27 @@ public class PravegaControllerK8sService extends AbstractService {
     @Override
     public List<URI> getServiceDetails() {
         //fetch the URI.
+        if (Utils.localExecEnabled) {
+            return getExternalServiceDetails();
+        }
         return Futures.getAndHandleExceptions(k8sClient.getStatusOfPodWithLabel(NAMESPACE, "component", PRAVEGA_CONTROLLER_LABEL)
                                                        .thenApply(statuses -> statuses.stream()
                                                                                      .flatMap(s -> Stream.of(URI.create(TCP + s.getPodIP() + ":" + CONTROLLER_GRPC_PORT),
                                                                                                              URI.create(TCP + s.getPodIP() + ":" + CONTROLLER_REST_PORT)))
                                                                                      .collect(Collectors.toList())),
                                               t -> new TestFrameworkException(RequestFailed, "Failed to fetch ServiceDetails for pravega-controller", t));
+    }
+
+    @Override
+    public List<URI> getExternalServiceDetails() {
+        //fetch the URI.
+        return Futures.getAndHandleExceptions(k8sClient.getServicesWithLabel(NAMESPACE, "component", PRAVEGA_CONTROLLER_LABEL)
+                        .thenApply(statuses -> statuses.stream()
+                                .filter(s-> s.getLoadBalancer().getIngress()!=null)
+                                .flatMap(s -> Stream.of(URI.create(TCP + s.getLoadBalancer().getIngress().get(0).getIp() + ":" + CONTROLLER_GRPC_PORT),
+                                        URI.create(TCP + s.getLoadBalancer().getIngress().get(0).getIp() + ":" + CONTROLLER_REST_PORT)))
+                                .collect(Collectors.toList())),
+                t -> new TestFrameworkException(RequestFailed, "Failed to fetch ServiceDetails for pravega-controller", t));
     }
 
     @Override

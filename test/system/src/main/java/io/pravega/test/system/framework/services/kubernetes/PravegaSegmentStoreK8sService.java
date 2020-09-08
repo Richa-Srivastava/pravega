@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-
+import io.pravega.test.system.framework.Utils;
 
 import static io.pravega.test.system.framework.TestFrameworkException.Type.RequestFailed;
 
@@ -74,11 +74,25 @@ public class PravegaSegmentStoreK8sService extends AbstractService {
     @Override
     public List<URI> getServiceDetails() {
         //fetch the URI.
+        if (Utils.localExecEnabled) {
+            return getExternalServiceDetails();
+        }
         return Futures.getAndHandleExceptions(k8sClient.getStatusOfPodWithLabel(NAMESPACE, "component", PRAVEGA_SEGMENTSTORE_LABEL)
                                                        .thenApply(statuses -> statuses.stream()
                                                                                      .map(s -> URI.create(TCP + s.getPodIP() + ":" + SEGMENTSTORE_PORT))
                                                                                      .collect(Collectors.toList())),
                                               t -> new TestFrameworkException(RequestFailed, "Failed to fetch ServiceDetails for pravega-segmentstore", t));
+    }
+
+    @Override
+    public List<URI> getExternalServiceDetails() {
+        //fetch the URI.
+        return Futures.getAndHandleExceptions(k8sClient.getServicesWithLabel(NAMESPACE, "component", PRAVEGA_SEGMENTSTORE_LABEL)
+                        .thenApply(statuses -> statuses.stream()
+                                .filter(s->  s.getLoadBalancer().getIngress()!=null)
+                                .map(s -> URI.create(TCP + s.getLoadBalancer().getIngress().get(0).getIp() + ":" + SEGMENTSTORE_PORT))
+                                .collect(Collectors.toList())),
+                t -> new TestFrameworkException(RequestFailed, "Failed to fetch ServiceDetails for pravega-segmentstore", t));
     }
 
     @Override

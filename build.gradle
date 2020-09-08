@@ -855,7 +855,9 @@ project('test:system') {
         classpath = sourceSets.test.runtimeClasspath
 
         ext.repoUrl = project.hasProperty("repoUrl") ? project.repoUrl : ""
-        systemProperty "execType", "KUBERNETES"
+        //systemProperty "execType", "KUBERNETES"
+        systemProperty "execType", System.getProperty("execType", "KUBERNETES")
+        systemProperty "skipServiceInstallation", System.getProperty("skipServiceInstallation", "false")
         systemProperty "pravegaOperatorImage", System.getProperty("pravegaOperatorImage", "pravega/pravega-operator:latest")
         systemProperty "zookeeperOperatorImage", System.getProperty("zookeeperOperatorImage", "pravega/zookeeper-operator:latest")
         // The below properties are used to to specify the pravega docker image properties

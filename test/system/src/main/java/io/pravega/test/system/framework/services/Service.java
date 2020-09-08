@@ -11,6 +11,7 @@ package io.pravega.test.system.framework.services;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -57,6 +58,15 @@ public interface Service {
      *  @return List of {@link URI}s where the service is running.
      */
     public List<URI> getServiceDetails();
+
+    /**
+     * Get the list of Host:port URIs where the external service is running.
+     *
+     *  @return List of {@link URI}s where the external service is running.
+     */
+    public default List<URI> getExternalServiceDetails(){
+        return Collections.EMPTY_LIST;
+    }
 
     /**
      * Scale service to the new instance count.

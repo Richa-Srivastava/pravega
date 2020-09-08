@@ -48,6 +48,7 @@ public class Utils {
     public static final int ALTERNATIVE_REST_PORT = 9094;
     public static final TestExecutorFactory.TestExecutorType EXECUTOR_TYPE = TestExecutorFactory.getTestExecutionType();
     public static final boolean AUTH_ENABLED = isAuthEnabled();
+    public static final boolean localExecEnabled = isLocalExecEnabled();
     public static final String PROPERTIES_FILE = "pravega.properties";
     public static final String PROPERTIES_FILE_WITH_AUTH = "pravega_withAuth.properties";
     public static final ImmutableMap<String, String> PRAVEGA_PROPERTIES = readPravegaProperties();
@@ -195,6 +196,9 @@ public class Utils {
         return Boolean.valueOf(securityEnabled);
     }
 
-
+    private static boolean isLocalExecEnabled() {
+        String localExecutionEnabled = getConfig("execType", "KUBERNETES");
+        return localExecutionEnabled.trim().equalsIgnoreCase("LOCAL") ?  true : false;
+    }
 
 }
