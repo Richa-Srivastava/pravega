@@ -157,9 +157,6 @@ public abstract class AbstractService implements Service {
                 .put("pravega", pravegaSpec);
         builder.put("version", PRAVEGA_VERSION);
 
-        if (Utils.TLS_AND_AUTH_ENABLED) {
-            builder.put("tls", tlsSpec);
-        }
         if (Utils.AUTH_ENABLED) {
             builder.put("authentication", authGenericSpec);
         }
@@ -248,9 +245,6 @@ public abstract class AbstractService implements Service {
     }
 
     private CompletableFuture<V1Secret> registerTLSSecret() {
-        if (!Utils.TLS_AND_AUTH_ENABLED) {
-            return CompletableFuture.completedFuture(null);
-        }
         try {
             V1Secret secret = getTLSSecret();
             V1Secret existingSecret  = Futures.getThrowingException(k8sClient.getSecret(SECRET_NAME_USED_FOR_TLS, NAMESPACE));
