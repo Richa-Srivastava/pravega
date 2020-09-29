@@ -60,7 +60,6 @@ public abstract class AbstractService implements Service {
     static final String CUSTOM_RESOURCE_KIND_PRAVEGA = "PravegaCluster";
     static final String PRAVEGA_CONTROLLER_LABEL = "pravega-controller";
     static final String PRAVEGA_SEGMENTSTORE_LABEL = "pravega-segmentstore";
-    static final String SECRET_NAME_USED_FOR_TLS = "selfsigned-cert-tls";
     static final String SECRET_NAME_USED_FOR_AUTH = "password-auth";
     static final String BOOKKEEPER_LABEL = "bookie";
     static final String PRAVEGA_ID = "pravega";
@@ -97,8 +96,7 @@ public abstract class AbstractService implements Service {
     }
 
     CompletableFuture<Object> deployPravegaOnlyCluster(final URI zkUri, int controllerCount, int segmentStoreCount, ImmutableMap<String, String> props) {
-    return registerTLSSecret()
-            .thenCompose(v -> k8sClient.createSecret(NAMESPACE, authSecret()))
+    return k8sClient.createSecret(NAMESPACE, authSecret())
             .thenCompose(v -> k8sClient.createAndUpdateCustomObject(CUSTOM_RESOURCE_GROUP_PRAVEGA, CUSTOM_RESOURCE_VERSION_PRAVEGA,
             NAMESPACE, CUSTOM_RESOURCE_PLURAL_PRAVEGA,
             getPravegaOnlyDeployment(zkUri.getAuthority(),
@@ -126,15 +124,6 @@ public abstract class AbstractService implements Service {
                 .put("longtermStorage", tier2Spec())
                 .build();
 
-        final Map<String, Object> staticTlsSpec = ImmutableMap.<String, Object>builder()
-                .put("controllerSecret", SECRET_NAME_USED_FOR_TLS)
-                .put("segmentStoreSecret", SECRET_NAME_USED_FOR_TLS)
-                .build();
-
-        final Map<String, Object> tlsSpec = ImmutableMap.<String, Object>builder()
-                .put("static", staticTlsSpec)
-                .build();
-
         final Map<String, Object> authGenericSpec = ImmutableMap.<String, Object>builder()
                 .put("enabled", true)
                 .put("passwordAuthSecret", SECRET_NAME_USED_FOR_AUTH)
@@ -144,12 +133,12 @@ public abstract class AbstractService implements Service {
                 .put("apiVersion", CUSTOM_RESOURCE_API_VERSION)
                 .put("kind", CUSTOM_RESOURCE_KIND_PRAVEGA)
                 .put("metadata", ImmutableMap.of("name", PRAVEGA_ID, "namespace", NAMESPACE))
-                .put("spec", buildPravegaClusterSpecWithBookieUri(zkLocation, pravegaSpec, tlsSpec, authGenericSpec))
+                .put("spec", buildPravegaClusterSpecWithBookieUri(zkLocation, pravegaSpec, authGenericSpec))
                 .build();
     }
 
     protected Map<String, Object> buildPravegaClusterSpecWithBookieUri(String zkLocation, Map<String, Object> pravegaSpec,
-                                                                       Map<String, Object> tlsSpec, Map<String, Object> authGenericSpec) {
+                                                                       Map<String, Object> authGenericSpec) {
 
         ImmutableMap.Builder<String, Object> builder = ImmutableMap.<String, Object>builder();
         builder.put("zookeeperUri", zkLocation)
@@ -231,31 +220,6 @@ public abstract class AbstractService implements Service {
                         .put("memory", requestsMem)
                         .build())
                 .build();
-    }
-
-    private static V1Secret getTLSSecret() throws IOException {
-        String data = "";
-        String yamlInputPath = "secret.yaml";
-        try (InputStream inputStream = Utils.class.getClassLoader().getResourceAsStream(yamlInputPath)) {
-            data = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
-        }
-        Yaml.addModelMap("v1", "Secret", V1Secret.class);
-        V1Secret yamlSecret = (V1Secret) Yaml.loadAs(data, V1Secret.class);
-        return yamlSecret;
-    }
-
-    private CompletableFuture<V1Secret> registerTLSSecret() {
-        try {
-            V1Secret secret = getTLSSecret();
-            V1Secret existingSecret  = Futures.getThrowingException(k8sClient.getSecret(SECRET_NAME_USED_FOR_TLS, NAMESPACE));
-            if (existingSecret != null) {
-                Futures.getThrowingException(k8sClient.deleteSecret(SECRET_NAME_USED_FOR_TLS, NAMESPACE));
-            }
-            return k8sClient.createSecret(NAMESPACE, secret);
-        } catch (Exception e) {
-            log.error("Could not register secret: ", e);
-        }
-        return CompletableFuture.completedFuture(null);
     }
 
     private V1Secret authSecret() {
@@ -349,3 +313,4 @@ public abstract class AbstractService implements Service {
         // this is a NOP for KUBERNETES based implementation.
     }
 }
+
