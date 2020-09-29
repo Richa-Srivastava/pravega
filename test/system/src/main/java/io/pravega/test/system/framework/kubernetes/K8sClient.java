@@ -220,7 +220,7 @@ public class K8sClient {
      * @return Future representing the list of pod status.
      */
     public CompletableFuture<V1PodList> getPodsWithLabel(String namespace, String labelName, String labelValue) {
-       return getPodsWithLabels(namespace, ImmutableMap.of(labelName, labelValue));
+        return getPodsWithLabels(namespace, ImmutableMap.of(labelName, labelValue));
     }
 
     /**
@@ -233,9 +233,7 @@ public class K8sClient {
     public CompletableFuture<V1PodList> getPodsWithLabels(String namespace, Map<String, String> labels) {
         CoreV1Api api = new CoreV1Api();
 
-        // Workaround for okhttp issue, tracked by https://github.com/pravega/pravega/issues/3361
         log.debug("Current number of http interceptors {}", api.getApiClient().getHttpClient().networkInterceptors().size());
-        api.getApiClient().getHttpClient().networkInterceptors().clear();
 
         String labelSelector = labels.entrySet().stream().map(entry -> entry.getKey() + "=" + entry.getValue()).collect(Collectors.joining());
         K8AsyncCallback<V1PodList> callback = new K8AsyncCallback<>("listPods");
@@ -255,10 +253,10 @@ public class K8sClient {
     public CompletableFuture<Map<String, V1ContainerStatus>> getRestartedPods(String namespace, String labelName, String labelValue) {
         return getPodsWithLabel(namespace, labelName, labelValue)
                      .thenApply(v1PodList -> v1PodList.getItems().stream()
-                                                      .filter(pod -> !pod.getStatus().getContainerStatuses().isEmpty() &&
-                                                              (pod.getStatus().getContainerStatuses().get(0).getRestartCount() != 0))
-                                                      .collect(Collectors.toMap(pod -> pod.getMetadata().getName(),
-                                                                                pod -> pod.getStatus().getContainerStatuses().get(0))));
+                             .filter(pod -> !pod.getStatus().getContainerStatuses().isEmpty() &&
+                                     (pod.getStatus().getContainerStatuses().get(0).getRestartCount() != 0))
+                             .collect(Collectors.toMap(pod -> pod.getMetadata().getName(),
+                                     pod -> pod.getStatus().getContainerStatuses().get(0))));
     }
 
     /**
